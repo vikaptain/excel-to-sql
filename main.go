@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -11,33 +10,36 @@ import (
 
 )
 
-var dirOut = flag.String("d", "", "string类型参数")
+var dirOut = "data"
+
+var headerStr = ""
+
+var footerStr="";
 
 func main() {
-	flag.Parse()
 
-	dirs, _ := ioutil.ReadDir(*dirOut)
+	dirs, _ := ioutil.ReadDir(dirOut)
 
 	for _, dir := range dirs {
-		_, err := os.Stat(*dirOut + "/" + dir.Name() + "/input.xlsx")
+		_, err := os.Stat(dirOut + "/" + dir.Name() + "/input.xlsx")
 		if err != nil {
 			if !os.IsExist(err) {
 				continue
 			}
 		}
-		_, err = os.Stat(*dirOut + "/" + dir.Name() + "/template.sql")
+		_, err = os.Stat(dirOut + "/" + dir.Name() + "/template.sql")
 		if err != nil {
 			if !os.IsExist(err) {
 				continue
 			}
 		}
 
-		ToSQL(*dirOut+"/"+dir.Name()+"/input.xlsx", *dirOut+"/"+dir.Name()+"/template.sql", "result/"+dir.Name()+".sql")
+		ToSQL(dirOut+"/"+dir.Name()+"/input.xlsx", dirOut+"/"+dir.Name()+"/template.sql", "result/"+dir.Name()+".sql",dirOut+"/"+dir.Name()+"/footer.sql")
 	}
 
 }
 
-func ToSQL(input string, template string, output string) {
+func ToSQL(input string, template string, output string,footer string) {
 	xlFile, err := xlsx.OpenFile(input)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -77,7 +79,9 @@ func ToSQL(input string, template string, output string) {
 					text := row.Cells[i].String()
 					rowMap[headers[i]] = text
 				}
-				values = append(values, rowMap)
+				if len(rowMap)!=0 {
+					values = append(values, rowMap)
+				}
 			}
 		}
 		template := getTemplate(template)
@@ -91,7 +95,17 @@ func ToSQL(input string, template string, output string) {
 		break
 	}
 
-	ioutil.WriteFile(output, []byte(strings.Join(strArray, "\r\n")), 0644)
+	sqlStr:=headerStr+"\r\n"+strings.Join(strArray, "\r\n");
+
+	// ioutil.WriteFile(output, []byte(headerStr+"\r\n"+strings.Join(strArray, "\r\n")), 0644)
+
+	footerStr := getTemplate(footer)
+
+	sqlStr+="\r\n";
+	sqlStr=sqlStr+footerStr
+
+	ioutil.WriteFile(output, []byte(sqlStr), 0644)
+
 }
 
 func getTemplate(filename string) string {
